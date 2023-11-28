@@ -1,40 +1,44 @@
 var express = require('express');
 var router = express.Router();
 
-const danubius = createUniversity();
-const student = {nume: 'Lupu', prenume:'Adrian', CNP:1940716000000, buletin:'XR666777'};
-const student2  = {nume: 'Lupu', prenume:'Adrian2', CNP:1940716000001, buletin:'XR666777'};
+const student1 = {nume: 'Lupu', prenume:'Adrian', cnp:1940716000000, buletin:'XR666777', status:'inactive'};
+const student2  = {nume: 'Lupu', prenume:'Adrian2', cnp:1940716000001, buletin:'XR666777', status:'inactive'};
+let students =[];
+const studentData = ['nume', 'prenume', 'CNP', 'buletin', 'status'];
+students.push(student1);
+students.push(student2);
 
-/* Populeaza baza de date */
-router.get('/createUniversity', function(req, res, next) {
-  danubius.addStudent(student);
-  danubius.addStudent(student2);
-  res.render('index', { title: 'Studentii au fost adaugati!' });
-});
+const danubius = createUniversity();
+
 /* Afiseaza toti studentii in format JSON*/
 router.get('/listAllStudents', function(req, res, next) {
-  //res.render('index', { title: "Hello students!" });
   res.send(danubius.listAllStudents());
 });
-/* Schimba statutul pentru studentul 2 */
-router.get('/changeStudentStatus', function(req, res, next) {
-  danubius.changeStudentStatus(student2.CNP, 'active');
-  res.render('index', { title: 'Studentul 2 este acum activ!' });
+/* Schimba statutul pentru studentul x */
+router.get('/changeStudentStatus/:id', function(req, res, next) {
+  danubius.changeStudentStatus(req.params.id, 'active');
+  res.render('index', { title: `Studentul cu CNP-ul ${req.params.id} este acum activ!` });
+});
+/* Arata statutul pentru studentul x */
+router.get('/showStudent/:id', function(req, res, next) {
+    res.send(danubius.showStudent(req.params.id));
+});
+/* Afiseaza statutul pentru studentul x */
+router.get('/showStudentStatus/:id', function(req, res, next) {
+    res.send(danubius.showStudentStatus(req.params.id));
 });
 
 module.exports = router;
 
-function createUniversity() {
-    let students = [];
-    const studentData = ['nume', 'prenume', 'CNP', 'buletin'];
+function createUniversity (){
     const noStudentMsg = (CNP) => {
         return `Universitatea Danubius in momentul de fata nu are nici un student inscris cu CNP ul :${CNP} `
-    } 
+    }
     function studentInformation(student,CNP){
         if(!student){
             return noStudentMsg(CNP);
         }
-        return `${student.prenume} ${student.nume} este inscris la universitatea Danubius`; 
+        return `${student.prenume} ${student.nume} este inscris la universitatea Danubius`;
     }
 
     function displayCourses(student){
@@ -45,15 +49,15 @@ function createUniversity() {
         const materii = student.materii.reduce((materii, materie) => {
             const punctuation = materii.length > 0 ? ',' : ''
             return `${materii}${punctuation} ${materie.nume}`;
-        }, ''); 
+        }, '');
         return `Studentul ${studentName}, este inscris la urmatoarele materii : ${materii}`;
     }
-    const findStudent = (CNP) => {
-        return students.find(student => student.CNP === CNP);
+    function findStudent(CNP){
+        return students.find(s => s.cnp === parseInt(CNP));
     }
     return {
-        addStudent:(student) =>{ // nume prenume cnp serie 
-           const isStudentValid =  Object.keys(student).every(key => {
+        addStudent:(student) =>{ // nume prenume cnp serie
+            const isStudentValid =  Object.keys(student).every(key => {
                 return studentData.includes(key)
             })
             if(isStudentValid){
@@ -61,28 +65,28 @@ function createUniversity() {
             }else {
                 return 'Va rugam sa va asigurati ca ati introdus toate datele studentului. Campurile necesare pentru a adauga un student sunt : nume, prenume, CNP, buletin'
             }
-  
+
         },
         removeStudent: (CNP) => {
-           students = students.filter(student => student.CNP !== CNP);
+            students = students.filter(student => student.cnp !== CNP);
         },
-        editStudent: (CNP, studentInfo) => { // nume prenume , serie buletin 
-            students = students.map(student => student.CNP === CNP ? {...student, ...studentInfo} : student);
+        editStudent: (CNP, studentInfo) => { // nume prenume , serie buletin
+            students = students.map(student => student.cnp === CNP ? {...student, ...studentInfo} : student);
         },
 
         showStudent: (CNP) => {
             const student = findStudent(CNP);
+            //console.log(student);
             return studentInformation(student, CNP);
         },
         showAllStudents: () => {
             return `Universitatea Danubius are ${students.length} studenti`;
         },
         listAllStudents: () => {
-            //console.table(students);
-			return JSON.stringify(students);
+            return students;
         },
         enrollCourse: (CNP, nume) => {
-            students = students.map(student => student.CNP === CNP ? {...student, materii: [...student.materii, {nume, nota: ''}]} : student)
+            students = students.map(student => student.cnp === CNP ? {...student, materii: [...student.materii, {nume, nota: ''}]} : student)
         },
         findStudentCourses: (CNP) => {
             const student = findStudent(CNP);
@@ -91,32 +95,32 @@ function createUniversity() {
         deleteCourse: (CNP, nume) => {
             const student = findStudent(CNP);
             if(!student) {
-                return noStudentMsg(CNP) 
+                return noStudentMsg(CNP)
             }
             students = students.map(student => {
-              return student.CNP === CNP ? 
+                return student.cnp === CNP ?
                     {...student, materii: student.materii.filter(materie => materie.nume !== nume)} : student;
             });
-  
+
         },
         addGrade: function (CNP, nume, nota) {
             const student = findStudent(CNP);
             if(!student){
-               return noStudentMsg(CNP) ;
+                return noStudentMsg(CNP) ;
             }
             students =  students.map(student => {
-               return student.CNP === CNP  ? 
-                {...student, materii: student.materii.map((materie) => materie.nume === nume ? {...materie, nota} : materie)} : student;
+                return student.cnp === CNP  ?
+                    {...student, materii: student.materii.map((materie) => materie.nume === nume ? {...materie, nota} : materie)} : student;
             })
         },
         changeGrade: (CNP, nume, nota) => {
             const student = findStudent(CNP);
             if(!student){
-               return noStudentMsg(CNP) ;
+                return noStudentMsg(CNP) ;
             }
             students =  students.map(student => {
-               return student.CNP === CNP  ? 
-                {...student, materii: student.materii.map((materie) => materie.nume === nume ? {...materie, nota} : materie)} : student;
+                return student.cnp === CNP  ?
+                    {...student, materii: student.materii.map((materie) => materie.nume === nume ? {...materie, nota} : materie)} : student;
             })
         },
         showGrade: (CNP, nume) => {
@@ -133,22 +137,22 @@ function createUniversity() {
             }else {
                 return `Studentul nu are inca o nota la materia ${nume}`
             }
-    
+
         },
         changeStudentStatus: (CNP,status) => {
             const student = findStudent(CNP);
             if(!student){
                 return noStudentMsg(CNP);
             }
-            students = students.map(student => student.CNP === CNP ? {...student,status: status} : student);
+            students = students.map(student => student.cnp === parseInt(CNP) ? {...student,status: status} : student);
         },
         showStudentStatus: (CNP) => {
             const {nume, prenume, status} = findStudent(CNP);
             if(!nume){
-                return noStudentMsg(CNP);
+                console.log(noStudentMsg(CNP));
             } else  {
                 return `Studentul ${nume} ${prenume} este momentan ${status}`
             }
-        } 
+        }
     }
 }
